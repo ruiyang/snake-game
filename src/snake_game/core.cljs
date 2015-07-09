@@ -10,52 +10,45 @@
 (def grid-x 20)
 (def grid-y 20)
 
-(def snake-joints (atom [[2 2]
-                         [4 2]
-                         [4 8]]))
+(def directiron-delta {
+                       :up [-1 0]
+                       :down [1 0]
+                       :right [0 1]
+                       :left [0 -1]
+                       })
 
-(defn- is-vertical [cord1 cord2]
-  (= (cord1 1)
-     (cord2 1)))
+(defonce snake-full-list (atom
+                          {:direction :up
+                           :body '([2 2]
+                                   [2 3]
+                                   [2 4]
+                                   [2 5]
+                                   [2 6]
+                                   [2 7]
+                                   [2 8]
+                                   [2 9])
+                           }))
 
-(defn- full-points [start end]
-  (let [start-x (start 0)
-        start-y (start 1)
-        end-x (end 0)
-        end-y (end 1)
-        delta-x (if (> start-x end-x) -1 1)
-        delta-y (if (> start-y end-y) -1 1)]
-    (if (is-vertical start end)
-      (map #(vector % start-y) (range start-x (+ end-x delta-x) delta-x))
-      (map #(vector start-x %) (range start-y (+ end-y delta-y) delta-y)))))
+(defn- mod-point [point]
+  (vec (map mod point [grid-x grid-y])))
 
-(defn- snake-cord-list []
-  (distinct
-   (reduce concat
-           (map full-points
-                (butlast @snake-joints)
-                (rest @snake-joints)))))
+(defn- next-head [head direction]
+  (let [delta (direction directiron-delta)
+        next-head (map + head delta)]
+    (mod-point next-head)))
 
-(def snake-full-list (atom
-                      {:direction :up
-                       :body (snake-cord-list)
-                       }))
-
-(defn- next-point [point start end]
-  (let [delta (map - start end)
-        next-point-vec (map + point delta)]
-    (vec (map mod next-point-vec [grid-x grid-y]))))
+(defn- next-tail [snake-list]
+  (let [tail-pre (last (butlast snake-list))]
+    (mod-point tail-pre)))
 
 (defn- move [snake]
   (let [snake-full-list (:body @snake)
         head (first snake-full-list)
-        head-next (first (rest snake-full-list))
-        head-next-state (next-point head head head-next)
+        head-next (next-head head (:direction @snake))
         tail (last snake-full-list)
-        tail-next (last (butlast snake-full-list))
-        tail-next-state (next-point tail tail-next tail)]
-    (swap! snake update-in [:body] #(cons head-next-state %))
-    (swap! snake update-in [:body] #(concat (butlast %) (list tail-next-state)))
+        tail-next (next-tail snake-full-list)]
+    (swap! snake update-in [:body] #(cons head-next %))
+    (swap! snake update-in [:body] #(concat (butlast %) (list tail-next)))
     (if (= (last (:body @snake)) (last (butlast (:body @snake))))
       (swap! snake update-in [:body] butlast))))
 
@@ -75,7 +68,7 @@
        ^{:key (str "cell-" row y)}
        [cell row y]))])
 
-(defn snake-grid-world []
+(defn snake-world []
   [:div
    [:h1 "Snake Game"]
    (for [r (range grid-x)]
@@ -85,14 +78,16 @@
    ])
 
 (defn render []
-  (reagent/render-component [snake-grid-world]
+  (reagent/render-component [snake-world]
                             (. js/document (getElementById "app"))))
 
 (add-watch snake-full-list :render render)
 
 (render)
 
-(js/setInterval #(move snake-full-list) 800)
+;;(js/setInterval #(move snake-full-list) 800)
+
+;; (swap! snake-full-list update-in [:direction] #(let [] :down))
 
 (defn on-js-reload []
   ;; optionally touch your app-state to force rerendering depending on
