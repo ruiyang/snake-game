@@ -10,9 +10,9 @@
 (def grid-x 20)
 (def grid-y 20)
 
-(def snake (atom [[2 2]
-                  [4 2]
-                  [4 8]]))
+(def snake-joints (atom [[2 2]
+                         [4 2]
+                         [4 8]]))
 
 (defn- is-vertical [cord1 cord2]
   (= (cord1 1)
@@ -26,39 +26,43 @@
         delta-x (if (> start-x end-x) -1 1)
         delta-y (if (> start-y end-y) -1 1)]
     (if (is-vertical start end)
-      (map #(list % start-y) (range start-x (+ end-x delta-x) delta-x))
-      (map #(list start-x %) (range start-y (+ end-y delta-y) delta-y)))))
+      (map #(vector % start-y) (range start-x (+ end-x delta-x) delta-x))
+      (map #(vector start-x %) (range start-y (+ end-y delta-y) delta-y)))))
 
 (defn- snake-cord-list []
   (distinct
    (reduce concat
            (map full-points
-                (butlast @snake)
-                (rest @snake)))))
+                (butlast @snake-joints)
+                (rest @snake-joints)))))
+
+(def snake-full-list (atom
+                      {:direction :up
+                       :body (snake-cord-list)
+                       }))
 
 (defn- next-point [point start end]
   (let [delta (map - start end)
         next-point-vec (map + point delta)]
-    next-point-vec
-    ))
+    (vec (map mod next-point-vec [grid-x grid-y]))))
 
 (defn- move [snake]
-  (let [snake-full-list (snake-cord-list)
+  (let [snake-full-list (:body @snake)
         head (first snake-full-list)
         head-next (first (rest snake-full-list))
         head-next-state (next-point head head head-next)
         tail (last snake-full-list)
         tail-next (last (butlast snake-full-list))
         tail-next-state (next-point tail tail-next tail)]
-    (swap! snake assoc 0 head-next-state)
-    (swap! snake assoc (- (count @snake) 1) tail-next-state)
-    (if (= (last @snake) (last (butlast @snake)))
-      (swap! snake pop))))
+    (swap! snake update-in [:body] #(cons head-next-state %))
+    (swap! snake update-in [:body] #(concat (butlast %) (list tail-next-state)))
+    (if (= (last (:body @snake)) (last (butlast (:body @snake))))
+      (swap! snake update-in [:body] butlast))))
 
 (defn cell [x y]
   (let [cord {:x x :y y}]
     [:div.cell
-     (if (some #(= [x y] %) (snake-cord-list))
+     (if (some #(= [x y] %) (:body @snake-full-list))
        {:style {:background-color "green"}})
      ]))
 
@@ -84,11 +88,11 @@
   (reagent/render-component [snake-grid-world]
                             (. js/document (getElementById "app"))))
 
-(add-watch snake :render render)
+(add-watch snake-full-list :render render)
 
 (render)
 
-(js/setInterval #(move snake) 1000)
+(js/setInterval #(move snake-full-list) 800)
 
 (defn on-js-reload []
   ;; optionally touch your app-state to force rerendering depending on
