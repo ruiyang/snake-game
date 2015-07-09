@@ -21,6 +21,7 @@
                        :down [1 0]
                        :right [0 1]
                        :left [0 -1]
+                       :key-not-found [1 1]
                        })
 
 (defonce snake-full-list (atom
