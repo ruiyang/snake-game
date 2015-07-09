@@ -1,6 +1,12 @@
 (ns ^:figwheel-always snake-game.core
+      (:require-macros [cljs.core.async.macros :refer [go go-loop]])
+
     (:require
-              [reagent.core :as reagent :refer [atom]]))
+     [reagent.core :as reagent :refer [atom]]
+     [cljs.core.async :as async :refer [chan put! <!]]
+
+     [goog.events :as events]
+     ))
 
 (enable-console-print!)
 
@@ -85,7 +91,36 @@
 
 (render)
 
-;;(js/setInterval #(move snake-full-list) 800)
+
+(def keycodes
+  {
+   37 :left
+   38 :up
+   39 :right
+   40 :down
+   })
+
+(defn event->key [ev]
+  "Transform the js event object to the command key"
+  (get keycodes (.-keyCode ev) :key-not-found))
+
+(defn event-chan []
+  (let [ev-chan (chan)]
+    (events/listen (.-body js/document)
+                   (.-KEYDOWN events/EventType)
+                   #(do
+                      (put! ev-chan (event->key %))))
+    ev-chan))
+
+(def ev-chan (event-chan))
+
+(go
+  (loop []
+    (let [key (<! ev-chan)]
+      (swap! snake-full-list update-in [:direction] #(let [] key)))
+    (recur)))
+
+(js/setInterval #(move snake-full-list) 500)
 
 ;; (swap! snake-full-list update-in [:direction] #(let [] :down))
 
