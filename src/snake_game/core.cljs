@@ -13,15 +13,14 @@
 (println "Edits to this text should show up in your developer console.")
 
 ;; define your app data so that it doesn't get over-written on reload
-(def grid-x 20)
-(def grid-y 20)
+(def grid-x 15)
+(def grid-y 15)
 
 (def directiron-delta {
                        :up [-1 0]
                        :down [1 0]
                        :right [0 1]
                        :left [0 -1]
-                       :key-not-found [1 1]
                        })
 
 (defonce snake-full-list (atom
@@ -87,9 +86,6 @@
 (defn render []
   (reagent/render-component [snake-world]
                             (. js/document (getElementById "app"))))
-
-(add-watch snake-full-list :render render)
-
 (render)
 
 
